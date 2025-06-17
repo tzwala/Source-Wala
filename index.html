@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source Wala</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* A better default for layout calculations */
+        * {
+            box-sizing: border-box;
+        }
+
+        @keyframes moveGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* General Styling */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: moveGradient 15s ease infinite;
+        }
+
+        /* Main Glassmorphism Container */
+        .container {
+            width: 90%;
+            max-width: 900px;
+            padding: 40px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: padding 0.3s ease;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            font-size: clamp(2rem, 5vw, 2.8rem);
+        }
+
+        p.description {
+            text-align: center;
+            color: #e0e0e0;
+            margin-bottom: 30px;
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            line-height: 1.5;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        #urlInput {
+            flex-grow: 1;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            color: #ffffff;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        #urlInput::placeholder { color: rgba(255, 255, 255, 0.5); }
+        #urlInput:focus {
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+
+        #fetchButton {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+        }
+        #fetchButton:hover { background: rgba(255, 255, 255, 0.3); }
+        #fetchButton:active { transform: scale(0.97); }
+        #fetchButton:disabled {
+            background: rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.1);
+            cursor: not-allowed;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        #status {
+            text-align: center;
+            min-height: 20px;
+            margin-bottom: 20px;
+            font-style: italic;
+            font-size: 1.1em;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        #status.error { color: #ffcdd2; }
+
+        #resultContainer {
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 50vh;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #resultContainer code {
+            font-family: "SF Mono", "Fira Code", "Consolas", "Menlo", monospace;
+            font-size: 14px;
+            color: #f0f0f0;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .icon-btn {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            font-size: 1.2rem;
+            color: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: background 0.3s, transform 0.1s;
+        }
+        .icon-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        .icon-btn:active { transform: scale(0.95); }
+        
+        /* NEW: Utility class to hide elements. This is the key change. */
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { width: 100%; padding: 20px; }
+            .input-group { flex-direction: column; }
+            #fetchButton { width: 100%; }
+            h1 { margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Source Wala</h1>
+        <p class="description">Enter a URL to fetch its HTML source.</p>
+
+        <div class="input-group">
+            <input type="url" id="urlInput" placeholder="https://example.com" required>
+            <button id="fetchButton">Get Source Code</button>
+        </div>
+        
+        <div id="status"></div>
+
+        <div id="resultContainer">
+            <code id="sourceCodeOutput">Source code here...</code>
+        </div>
+        
+        <!-- UPDATED: Added an ID and the .hidden class -->
+        <div id="actionButtonsContainer" class="action-buttons hidden">
+            <button id="copyButton" class="icon-btn" title="Copy Source">
+                <i class="fa-solid fa-copy"></i>
+            </button>
+            <button id="downloadButton" class="icon-btn" title="Download Source">
+                <i class="fa-solid fa-download"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const fetchButton = document.getElementById('fetchButton');
+        const statusDiv = document.getElementById('status');
+        const sourceCodeOutput = document.getElementById('sourceCodeOutput');
+        
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
+        // NEW: Get a reference to the button container
+        const actionButtonsContainer = document.getElementById('actionButtonsContainer');
+
+        const getSourceCode = async () => {
+            const targetUrl = urlInput.value.trim();
+
+            if (!targetUrl) {
+                showStatus('Please enter a URL.', true);
+                return;
+            }
+
+            try { new URL(targetUrl); } 
+            catch (_) {
+                showStatus('Invalid URL. Please include http:// or https://', true);
+                return;
+            }
+
+            showStatus('Fetching source code...', false);
+            sourceCodeOutput.textContent = '';
+            fetchButton.disabled = true;
+            // NEW: Make sure buttons are hidden at the start of a new fetch
+            actionButtonsContainer.classList.add('hidden'); 
+
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+
+            try {
+                const response = await fetch(proxyUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch. Server responded with status: ${response.status}`);
+                }
+                const sourceCode = await response.text();
+                sourceCodeOutput.textContent = sourceCode;
+                showStatus('Success! Source code loaded.', false);
+                
+                if (sourceCode) {
+                    // NEW: Show the button container if the fetch was successful
+                    actionButtonsContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showStatus(`Error: ${error.message}. The website might be blocking requests.`, true);
+                sourceCodeOutput.textContent = 'Could not retrieve source code.';
+                // Buttons remain hidden on error
+            } finally {
+                fetchButton.disabled = false;
+            }
+        };
+
+        const showStatus = (message, isError = false) => {
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : '';
+        };
+        
+        const copySourceCode = () => {
+            const codeToCopy = sourceCodeOutput.textContent;
+            navigator.clipboard.writeText(codeToCopy).then(() => {
+                showStatus('Source code copied to clipboard!', false);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                showStatus('Failed to copy code.', true);
+            });
+        };
+
+        const downloadSourceCode = () => {
+            const codeToDownload = sourceCodeOutput.textContent;
+            const blob = new Blob([codeToDownload], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            try {
+                const domain = new URL(urlInput.value).hostname;
+                link.download = `${domain}-source.html`;
+            } catch {
+                link.download = 'source-code.html';
+            }
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showStatus('Download started!', false);
+        };
+
+        fetchButton.addEventListener('click', getSourceCode);
+        urlInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                getSourceCode();
+            }
+        });
+        
+        copyButton.addEventListener('click', copySourceCode);
+        downloadButton.addEventListener('click', downloadSourceCode);
+    </script>
+
+</body>
+</html>
